@@ -1,0 +1,85 @@
+Jar file download 
+https://neo4j.com/download-center/?utm_campaign=gds-dwh1-developer-blog&utm_medium=blog&utm_content=get-started-neo4j-download-center#integrations
+
+Goal
+The goal of the Neo4j DWH Connector is to simplify the interoperability between Neo4j Spark and other data sources like Snowflake, Redshift and so on.
+In order to do that we created this connector that via a simple JSON file creates Spark’s jobs through Spark Submit.
+
+Nota bene
+The examples that we’re providing here are for a Job that moves data from Snowflake to Neo4j but the DWH connector works also in the other way around.
+
+
+How does it works?
+The Neo4j DWH Connector provides an easy way in order move data between Neo4j and popular Data Warehouses like:
+
+Snowflake
+BigQuery
+Redshift
+Azure Synapse
+
+You can you use it in two ways:
+
+As Spark Submit Job by providing a JSON configuration that abstracts a Spark Job which moves data from one data source to another
+As Scala/Python API in order to simplify writing a Spark Job that moves the dat from a database to another
+
+
+
+SPARK SUBMIT 
+Step 1  configure the json file for connection and ingesting data 
+</tmp/dwh/job.json> 
+
+ {
+ "name" : "Ingest Order table as relationships into Neo4j",
+ "conf" : { },
+ "hadoopConfiguration" : { },
+ "source" : {
+   "format" : "snowflake",
+   "options" : {
+     "sfSchema" : "TPCH_SF1",
+     "sfPassword" : "Ddi12345!",
+     "sfUser" : "irfandi",
+     "dbtable" : "ORDERS",
+     "sfDatabase" : "SNOWFLAKE_SAMPLE_DATA",
+     "sfURL" : "https://wb83945.ap-southeast-1.snowflakecomputing.com"
+   },
+   "columns": [
+     { "name": "CAST(O_CUSTKEY AS DOUBLE)", "alias": "O_CUSTKEY" },
+     { "name": "O_ORDERDATE" },
+     { "name": "O_COMMENT" },
+     { "name": "CAST(O_ORDERKEY AS LONG)", "alias": "O_ORDERKEY" }
+   ],
+   "where" : "O_CUSTKEY <= 10",
+   "printSchema" : false,
+   "partition" : {}
+ },
+ "target" : {
+   "format" : "org.neo4j.spark.DataSource",
+   "options" : {
+     "url" : "bolt://192.168.18.211",
+     "authentication.basic.username" : "neo4j",
+     "authentication.basic.password" : "ddi123",
+     "query" : "MERGE (s:Person:Customer{id: event.O_CUSTKEY}) MERGE(t:Order{id: event.O_ORDERKEY}) MERGE (s)-[:HAS_ORDER{date: event.O_ORDERDATE}]->(t)"
+   },
+   "mode" : "Overwrite"
+ }
+}
+
+Step 2 install and unzip neo4j-dwh-connectors
+
+unzip neo4j-dwh-connector_2.13-1.0.0_for_spark_3.jar
+
+
+Step  3 run script in bin 
+
+./spark-submit \
+  --class org.neo4j.dwh.connector.Neo4jDWHConnector \
+  --packages org.neo4j:neo4j-connector-apache-spark_2.12:4.1.0_for_spark_3,net.snowflake:spark-snowflake_2.12:2.10.0-spark_3.2,net.snowflake:snowflake-jdbc:3.13.15 \
+  --master local /home/ddi/spark-3.3.0-bin-hadoop3/neo4j-dwh-connector_2.12-1.0.0_for_spark_2.4.jar \
+  -p /tmp/dwh/job.json
+
+
+Result 
+	
+	
+
+
